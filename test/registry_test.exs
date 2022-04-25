@@ -22,4 +22,21 @@ defmodule KV.RegistryTest do
     Agent.stop(bucket)
     assert KV.Client.lookup(registry, "shopping") == :error
   end
+
+  test "removes bucket on crash", %{registry: registry} do
+    KV.Client.create(registry, "shopping")
+    {:ok, bucket} = KV.Client.lookup(registry, "shopping")
+
+    # Put a item and check
+    KV.Bucket.put(bucket, "eggs", 6)
+    assert KV.Bucket.get(bucket, "eggs") == 6
+
+    # Stop the bucket with non-normal reason
+    Agent.stop(bucket, :shutdown)
+    assert KV.Client.lookup(registry, "shopping") == :error
+  end
+
+  test "are temporary workers" do
+    assert Supervisor.child_spec(KV.Bucket, []).restart == :temporary
+  end
 end
